@@ -16,8 +16,8 @@ import java.util.Arrays;
 // TODO A: implement JSON Translator Done
 // TODO B: have the language panel do a combobox dropdown selection Done
 // TODO C: have the combobox take in languagecode into a country name Done
-// TODO D: repeat with country panel (but use JList instead of combobox)
-// TODO E: Reorder the UI
+// TODO D: repeat with country panel (but use JList instead of combobox) Done
+// TODO E: Reorder the UI, add tick, remove submit button Done
 public class GUI {
 
     public static void main(String[] args) {
@@ -79,6 +79,32 @@ public class GUI {
                 String langName = converter.fromLanguageCode(countryCode);
                 languageComboBox.addItem(langName);
             }
+
+            languageComboBox.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list,
+                                                              Object value,
+                                                              int index,
+                                                              boolean isSelected,
+                                                              boolean cellHasFocus) {
+                    JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+
+                    if (index >= 0) { // dropdown list rows
+                        Object selected = languageComboBox.getSelectedItem();
+                        if (selected != null && selected.equals(value)) {
+                            label.setText("✔ " + value.toString()); // tick for the chosen one
+                        } else {
+                            label.setText(value.toString());        // no tick
+                        }
+                    } else {
+                        // Closed combo box (selected field): just show plain text
+                        label.setText(value.toString());
+                    }
+
+                    return label;
+                }
+            });
+
             languagePanel.add(languageComboBox);
 
             // add listener for when an item is selected.
@@ -104,8 +130,6 @@ public class GUI {
             });
 
             JPanel buttonPanel = new JPanel();
-            JButton submit = new JButton("Submit");
-            buttonPanel.add(submit);
 
             JLabel resultLabelText = new JLabel("Translation:");
             buttonPanel.add(resultLabelText);
@@ -113,29 +137,33 @@ public class GUI {
             buttonPanel.add(resultLabel);
 
 
-            // adding listener for when the user clicks the submit button
-            submit.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    String languageName = (String) languageComboBox.getSelectedItem();
-                    String countryName  = list.getSelectedValue();
+            list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION); // simpler: one country
 
-                    String languageCode = converter.fromLanguage(languageName);   // e.g. "fr"
-                    String countryCode  = countryconverter.fromCountry(countryName);  // e.g. "can"
+            list.addListSelectionListener(e -> {
+                if (e.getValueIsAdjusting()) return; // fire once, not twice
 
-                    // for now, just using our simple translator, but
-                    // we'll need to use the real JSON version later.
-                    // added json version
-                    Translator translator = new JSONTranslator();
+                String languageName = (String) languageComboBox.getSelectedItem();
+                String countryName  = list.getSelectedValue();
 
-                    String result = translator.translate(countryCode, languageCode);
-                    if (result == null) {
-                        result = "no translation found!";
-                    }
-                    resultLabel.setText(result);
-
+                if (languageName == null || countryName == null) {
+                    resultLabel.setText("Please choose a language and a country.");
+                    return;
                 }
 
+                String languageCode = converter.fromLanguage(languageName);     // e.g. "fr"
+                String countryCode  = countryconverter.fromCountry(countryName); // e.g. "can"
+
+                if (languageCode == null || countryCode == null) {
+                    resultLabel.setText("Unsupported selection (no code mapping).");
+                    return;
+                }
+
+                // normalize if your JSON expects lowercase
+                languageCode = languageCode.toLowerCase();
+                countryCode  = countryCode.toLowerCase();
+
+                String result = translator.translate(countryCode, languageCode);
+                resultLabel.setText(result != null ? result : "no translation found!");
             });
 
             JPanel mainPanel = new JPanel();
